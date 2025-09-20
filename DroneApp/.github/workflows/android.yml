@@ -1,7 +1,7 @@
 name: Build Android APK
 
 on:
-  workflow_dispatch:
+  workflow_dispatch:   # Allows manual run from GitHub Actions
   push:
     branches: [ main ]
 
@@ -10,10 +10,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    # Step 1: Checkout your repo
+    # Step 1: Checkout your repository
     - uses: actions/checkout@v4
 
-    # Step 2: Set up Python
+    # Step 2: Set up Python 3.10
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
@@ -23,15 +23,14 @@ jobs:
     - name: Install system dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y zip unzip openjdk-11-jdk python3-pip git
+        sudo apt-get install -y zip unzip openjdk-11-jdk python3-pip git build-essential
 
-    # Step 4: Install Python dependencies
-    - name: Install Python packages
+    # Step 4: Install Python dependencies (Cython + Buildozer)
+    - name: Install Python dependencies
       run: |
         python3 -m pip install --upgrade pip
         pip install cython
         pip install buildozer==1.5.0
-        pip install kivy_garden.joystick
 
     # Step 5: Build the APK
     - name: Build APK
@@ -39,7 +38,7 @@ jobs:
         cd DroneApp
         buildozer android debug
 
-    # Step 6: Upload APK artifact
+    # Step 6: Upload the generated APK as artifact
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
