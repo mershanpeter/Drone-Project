@@ -8,6 +8,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
     - uses: actions/checkout@v4
 
@@ -21,17 +22,19 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y zip unzip openjdk-11-jdk python3-pip git
 
-    - name: Install buildozer
+    - name: Install Python dependencies
       run: |
         pip install --upgrade pip
-        pip install buildozer==1.4.1
+        pip install cython
+        pip install --upgrade buildozer==1.5.0
 
     - name: Build APK
       run: |
+        cd DroneApp
         buildozer -v android debug
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: DroneApp-apk
-        path: bin/*.apk
+        path: DroneApp/bin/*.apk
