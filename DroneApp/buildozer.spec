@@ -3,11 +3,8 @@ title = DroneApp
 package.name = droneapp
 package.domain = com.mershanpeter
 source.include_exts = py,png,jpg,kv,atlas
-version = 1.0          # <---- Add this line
-requirements = python3,kivy
-
-
-
+version = 1.0
+requirements = python3,kivy,kivy_garden.joystick,requests
 
 
 
