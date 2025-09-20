@@ -26,15 +26,13 @@ jobs:
         pip install --upgrade pip
         pip install --upgrade buildozer==1.5.0
 
-
     - name: Build APK
-    run: |
-    cd DroneApp      
-    buildozer -v android debug
-
+      run: |
+        cd DroneApp
+        buildozer -v android debug
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: DroneApp-apk
-        path: bin/*.apk
+        path: DroneApp/bin/*.apk
