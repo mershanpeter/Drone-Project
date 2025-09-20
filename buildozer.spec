@@ -5,49 +5,53 @@ title = DroneApp
 # (str) Package name
 package.name = droneapp
 
-# (str) Package domain (unique)
-package.domain = org.mershanpeter
+# (str) Package domain (reverse domain notation)
+package.domain = org.mershan
 
-# (str) Source code directory
+# (str) Source code directory (relative to buildozer.spec)
 source.dir = .
 
-# (list) List of requirements
-requirements = python3,kivy,kivy_garden.joystick,socket
-
-# (str) Version
+# (str) Application version
 version = 1.0.0
+
+# (list) Requirements
+requirements = python3,kivy
+
+# (str) Entry point of the app
+entrypoint = main.py
 
 # (str) Icon of the app
 icon.filename = %(source.dir)s/icon.png
 
-# (str) Entry point of your app
-# main.py is your Kivy Python script
-entrypoint = main.py
+# (bool) Copy the directory to the APK
+copy_mkdir = True
 
-# (bool) Include all source files in the package
-source.include_exts = py,png,jpg,kv,atlas
+# (list) Include additional files
+source.include_exts = py,png,jpg,kv,txt
 
-# (list) Permissions (for UDP / networking)
-android.permissions = INTERNET
-
-# (bool) Whether to copy the README and LICENSE
-copy_metadata = True
-
-# (list) Android orientation
+# (str) Orientation
 orientation = portrait
 
-[buildozer]
-# (str) Path to build folder (temporary)
-build_dir = ./.buildozer
+# (bool) Presplash
+presplash.filename = %(source.dir)s/presplash.png
 
-# (str) Path to bin folder (APK output)
-bin_dir = ./bin
-
-[android]
-# Target Android API
+# (str) Supported Android API level
 android.api = 33
-# Minimum Android API
+
+# (str) Minimum SDK version
 android.minapi = 21
-# Java version
-android.javac = 17
-# Android SDK is auto-installed by p4a, no need to specify old config
+
+# (str) Android NDK version
+android.ndk = 25b
+
+# (bool) Android logcat
+android.logcat_filters = *:S python:D
+
+# (bool) Android permissions (if needed)
+android.permissions = INTERNET
+
+# (str) Android entry point
+android.entrypoint = org.kivy.android.PythonActivity
+
+# (bool) Android allow backup
+android.allow_backup = true
