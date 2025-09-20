@@ -1,5 +1,4 @@
 [app]
-
 # (str) Title of your application
 title = DroneApp
 
@@ -7,49 +6,48 @@ title = DroneApp
 package.name = droneapp
 
 # (str) Package domain (unique)
-package.domain = com.mershanpeter
+package.domain = org.mershanpeter
 
-# (str) Source directory where your main.py is located
+# (str) Source code directory
 source.dir = .
 
-# (str) Main script filename
-source.main = main.py
+# (list) List of requirements
+requirements = python3,kivy,kivy_garden.joystick,socket
 
-# (str) Version of your application
+# (str) Version
 version = 1.0.0
-
-# (list) Application requirements
-requirements = python3,kivy,pyjnius,kivy_garden.joystick,socket
 
 # (str) Icon of the app
 icon.filename = %(source.dir)s/icon.png
 
-# (bool) Whether the app should be fullscreen
-fullscreen = 0
+# (str) Entry point of your app
+# main.py is your Kivy Python script
+entrypoint = main.py
 
-# (str) Supported orientation: landscape, portrait
-orientation = portrait
+# (bool) Include all source files in the package
+source.include_exts = py,png,jpg,kv,atlas
 
-# (list) Permissions your app needs
+# (list) Permissions (for UDP / networking)
 android.permissions = INTERNET
 
-# (bool) Use AndroidX
-android.use_androidx = True
+# (bool) Whether to copy the README and LICENSE
+copy_metadata = True
 
-# (str) Minimum Android API your app supports
+# (list) Android orientation
+orientation = portrait
+
+[buildozer]
+# (str) Path to build folder (temporary)
+build_dir = ./.buildozer
+
+# (str) Path to bin folder (APK output)
+bin_dir = ./bin
+
+[android]
+# Target Android API
+android.api = 33
+# Minimum Android API
 android.minapi = 21
-
-# (str) Target Android API (leave Buildozer default, no need to set android.sdk)
-# android.sdk = 33  <-- removed deprecated line
-
-# (str) Android NDK version (optional)
-# android.ndk = 25b
-
-# (bool) Android logcat filters (optional)
-log_level = 2
-
-# (list) Exclude files/folders from the package
-exclude_dirs = tests,docs
-
-# (bool) Presplash (loading) image
-# presplash.filename = %(source.dir)s/presplash.png
+# Java version
+android.javac = 17
+# Android SDK is auto-installed by p4a, no need to specify old config
