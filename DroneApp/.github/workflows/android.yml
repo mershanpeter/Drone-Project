@@ -10,30 +10,36 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repo
-      uses: actions/checkout@v4
+    # Step 1: Checkout your repo
+    - uses: actions/checkout@v4
 
+    # Step 2: Set up Python
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.10'
 
+    # Step 3: Install system dependencies
     - name: Install system dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -y zip unzip openjdk-11-jdk python3-pip git
 
-    - name: Install Python dependencies
+    # Step 4: Install Python dependencies
+    - name: Install Python packages
       run: |
-        pip install --upgrade pip
+        python3 -m pip install --upgrade pip
         pip install cython
         pip install buildozer==1.5.0
+        pip install kivy_garden.joystick
 
+    # Step 5: Build the APK
     - name: Build APK
       run: |
         cd DroneApp
-        buildozer -v android debug
+        buildozer android debug
 
+    # Step 6: Upload APK artifact
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
