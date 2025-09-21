@@ -12,10 +12,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # 1. Checkout the repo
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 1. Install system dependencies
+      # 2. Install system dependencies
       - name: Install system dependencies
         run: |
           sudo apt-get update
@@ -26,41 +27,51 @@ jobs:
             libffi-dev libssl-dev git \
             python3-dev python3-setuptools python3-wheel
 
-      # 2. Install stable Buildozer + dependencies
+      # 3. Install Buildozer + dependencies
       - name: Install buildozer + dependencies
         run: |
           pip install --upgrade pip
           pip install "buildozer==1.5.0" "cython<3.0" "setuptools<70"
 
-      # 3. Install Android SDK + Build-tools and accept licenses
+      # 4. Install Android SDK + Build-tools and accept licenses
       - name: Install Android SDK + Build-tools
         run: |
-          mkdir -p $HOME/android-sdk/cmdline-tools
+          mkdir -p $HOME/android-sdk/cmdline-tools/latest
           cd $HOME/android-sdk/cmdline-tools
+
+          # Download and unzip command-line tools
           curl -fo tools.zip https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
           unzip -o tools.zip -d latest
+
+          # Set environment variables
           export ANDROID_HOME=$HOME/android-sdk
           export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
+
+          # Verify sdkmanager exists
+          ls -l $ANDROID_HOME/cmdline-tools/latest/bin
+
+          # Accept licenses and install required packages
+          yes | sdkmanager --licenses || true
           sdkmanager --update
-          yes | sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2" "build-tools;36.1.0" "cmdline-tools;latest"
+          yes | sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2" "build-tools;36.1.0"
           yes | sdkmanager --licenses
 
-      # 4. Clean previous Buildozer cache
+      # 5. Clean previous Buildozer cache
       - name: Clean buildozer cache
         run: rm -rf ~/.buildozer
 
-      # 5. Build APK
+      # 6. Build APK
       - name: Build APK
         working-directory: DroneApp
         run: buildozer -v android debug
 
-      # 6. Prepare APK artifact (zip)
+      # 7. Prepare APK artifact (zip)
       - name: Prepare APK artifact (zip)
         run: |
           mkdir -p artifacts
           zip -j artifacts/DroneApp-APKs.zip DroneApp/bin/*.apk
 
-      # 7. Upload APK artifact using upload-artifact v4
+      # 8. Upload APK artifact using upload-artifact v4
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
