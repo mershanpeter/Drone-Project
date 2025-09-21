@@ -1,10 +1,9 @@
-name: Build Android APK
+name: Build DroneApp APK
 
 on:
   push:
     branches:
       - main
-  pull_request:
   workflow_dispatch:
 
 jobs:
@@ -12,68 +11,69 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Checkout the repo
-      - name: Checkout repository
-        uses: actions/checkout@v4
+    - name: Checkout repository
+      uses: actions/checkout@v3
 
-      # 2. Install system dependencies
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            zip unzip openjdk-17-jdk \
-            autoconf automake libtool \
-            pkg-config zlib1g-dev libncurses5-dev \
-            libffi-dev libssl-dev git \
-            python3-dev python3-setuptools python3-wheel
+    # 1. Install system dependencies
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          zip unzip openjdk-17-jdk \
+          autoconf automake libtool \
+          pkg-config zlib1g-dev libncurses5-dev \
+          libffi-dev libssl-dev git \
+          python3-dev python3-setuptools python3-wheel
 
-      # 3. Install Buildozer + dependencies
-      - name: Install buildozer + dependencies
-        run: |
-          pip install --upgrade pip
-          pip install "buildozer==1.5.0" "cython<3.0" "setuptools<70"
+    # 2. Install Buildozer + dependencies
+    - name: Install Buildozer + Python deps
+      run: |
+        python3 -m pip install --upgrade pip
+        pip install "buildozer==1.5.0" "cython<3.0" "setuptools<70"
 
-      # 4. Install Android SDK + Build-tools and accept licenses
-      - name: Install Android SDK + Build-tools
-        run: |
-          mkdir -p $HOME/android-sdk/cmdline-tools/latest
-          cd $HOME/android-sdk/cmdline-tools
+    # 3. Clean previous Buildozer cache
+    - name: Clean Buildozer cache
+      run: rm -rf ~/.buildozer
 
-          # Download and unzip command-line tools
-          curl -fo tools.zip https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
-          unzip -o tools.zip -d latest
+    # 4. Install Android SDK + Build-tools dynamically
+    - name: Install Android SDK + Build-tools
+      run: |
+        mkdir -p $HOME/android-sdk/cmdline-tools
+        cd $HOME/android-sdk/cmdline-tools
 
-          # Set environment variables
-          export ANDROID_HOME=$HOME/android-sdk
-          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
+        # Download command-line tools
+        curl -fo tools.zip https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
+        unzip -o tools.zip
+        mv cmdline-tools latest
 
-          # Verify sdkmanager exists
-          ls -l $ANDROID_HOME/cmdline-tools/latest/bin
+        # Set environment variables
+        export ANDROID_HOME=$HOME/android-sdk
+        export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
 
-          # Accept licenses and install required packages
-          yes | sdkmanager --licenses || true
-          sdkmanager --update
-          yes | sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2" "build-tools;36.1.0"
-          yes | sdkmanager --licenses
+        # Accept licenses
+        yes | sdkmanager --licenses || true
+        sdkmanager --update
 
-      # 5. Clean previous Buildozer cache
-      - name: Clean buildozer cache
-        run: rm -rf ~/.buildozer
+        # Install platform-tools and latest build-tools automatically
+        sdkmanager "platform-tools" "platforms;android-33"
+        LATEST_BUILD_TOOLS=$(sdkmanager --list | grep "build-tools;" | awk '{print $1}' | sort -V | tail -n 1)
+        sdkmanager "$LATEST_BUILD_TOOLS"
+        yes | sdkmanager --licenses
 
-      # 6. Build APK
-      - name: Build APK
-        working-directory: DroneApp
-        run: buildozer -v android debug
+    # 5. Build APK
+    - name: Build APK
+      working-directory: DroneApp
+      run: buildozer -v android debug
 
-      # 7. Prepare APK artifact (zip)
-      - name: Prepare APK artifact (zip)
-        run: |
-          mkdir -p artifacts
-          zip -j artifacts/DroneApp-APKs.zip DroneApp/bin/*.apk
+    # 6. Prepare APK artifact
+    - name: Prepare APK artifact (zip)
+      run: |
+        mkdir -p artifacts
+        zip -j artifacts/DroneApp-APKs.zip DroneApp/bin/*.apk
 
-      # 8. Upload APK artifact using upload-artifact v4
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: DroneApp-APK
-          path: artifacts/DroneApp-APKs.zip
+    # 7. Upload APK artifact
+    - name: Upload APK artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: DroneApp-APK
+        path: artifacts/DroneApp-APKs.zip
