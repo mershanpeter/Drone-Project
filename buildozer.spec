@@ -1,48 +1,57 @@
-name: Build Android APK
+[app]
+# (str) Title of your application
+title = DroneApp
 
-on:
-  push:
-    branches:
-      - main
-  pull_request:
+# (str) Package name
+package.name = droneapp
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
+# (str) Package domain (reverse domain notation)
+package.domain = org.mershan
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+# (str) Source code directory (relative to buildozer.spec)
+source.dir = .
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.10"
+# (str) Application version
+version = 1.0.0
 
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            zip unzip openjdk-17-jdk \
-            autoconf automake libtool \
-            pkg-config zlib1g-dev libncurses5-dev \
-            libffi-dev libssl-dev git
+# (list) Requirements
+requirements = python3,kivy
 
-      - name: Install buildozer
-        run: pip install buildozer cython
+# (str) Entry point of the app
+entrypoint = main.py
 
-      - name: Clean buildozer cache
-        run: rm -rf ~/.buildozer
+# (str) Icon of the app
+icon.filename = %(source.dir)s/icon.png
 
-      - name: Accept Android SDK licenses
-        run: yes | sdkmanager --licenses
+# (bool) Copy the directory to the APK
+copy_mkdir = True
 
-      - name: Build APK
-        working-directory: DroneApp
-        run: buildozer -v android debug
+# (list) Include additional files
+source.include_exts = py,png,jpg,kv,txt
 
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: DroneApp-APK
-          path: DroneApp/bin/*.apk
+# (str) Orientation
+orientation = portrait
+
+# (bool) Presplash
+presplash.filename = %(source.dir)s/presplash.png
+
+# (str) Supported Android API level
+android.api = 33
+
+# (str) Minimum SDK version
+android.minapi = 21
+
+# (str) Android NDK version
+android.ndk = 25b
+
+# (bool) Android logcat
+android.logcat_filters = *:S python:D
+
+# (bool) Android permissions (if needed)
+android.permissions = INTERNET
+
+# (str) Android entry point
+android.entrypoint = org.kivy.android.PythonActivity
+
+# (bool) Android allow backup
+android.allow_backup = true
