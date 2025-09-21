@@ -25,17 +25,17 @@ jobs:
           libffi-dev libssl-dev git \
           python3-dev python3-setuptools python3-wheel
 
-    # 2. Install Buildozer + dependencies
+    # 2. Install Buildozer + Python deps
     - name: Install Buildozer + Python deps
       run: |
         python3 -m pip install --upgrade pip
         pip install "buildozer==1.5.0" "cython<3.0" "setuptools<70"
 
-    # 3. Clean previous Buildozer cache
+    # 3. Clean Buildozer cache
     - name: Clean Buildozer cache
       run: rm -rf ~/.buildozer
 
-    # 4. Install Android SDK + Build-tools dynamically
+    # 4. Install Android SDK + latest compatible build-tools
     - name: Install Android SDK + Build-tools
       run: |
         mkdir -p $HOME/android-sdk/cmdline-tools
@@ -46,19 +46,18 @@ jobs:
         unzip -o tools.zip
         mv cmdline-tools latest
 
-        # Set environment variables
         export ANDROID_HOME=$HOME/android-sdk
         export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
 
-        # Accept licenses
+        # Accept licenses before installing packages
         yes | sdkmanager --licenses || true
-        sdkmanager --update
 
-        # Install platform-tools and latest build-tools automatically
-        sdkmanager "platform-tools" "platforms;android-33"
-        LATEST_BUILD_TOOLS=$(sdkmanager --list | grep "build-tools;" | awk '{print $1}' | sort -V | tail -n 1)
-        sdkmanager "$LATEST_BUILD_TOOLS"
+        # Install platform-tools and pick stable build-tools automatically
+        sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
         yes | sdkmanager --licenses
+
+        # Verify build-tools installed
+        ls -la $ANDROID_HOME/build-tools/
 
     # 5. Build APK
     - name: Build APK
