@@ -9,56 +9,55 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    container:
+      image: kivy/buildozer:python3.10
 
     steps:
-      # 1️⃣ Checkout the repo
-      - name: Checkout code
+      # Step 1: Checkout repository
+      - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2️⃣ Set up Python
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: 3.10
-
-      # 3️⃣ Install dependencies for Buildozer and Python packages
+      # Step 2: Install Python dependencies (Buildozer + Cython)
       - name: Install Python dependencies
         run: |
-          python -m pip install --upgrade pip
+          pip install --upgrade pip
           pip install "buildozer==1.5.0" "cython<3.0" "setuptools<70"
 
-      # 4️⃣ Install Android SDK Command-line tools and build-tools
-      - name: Setup Android SDK
-        run: |
-          mkdir -p $HOME/android-sdk/cmdline-tools
-          cd $HOME/android-sdk/cmdline-tools
-          curl -fo tools.zip https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
-          unzip -o tools.zip -d latest
-          export ANDROID_HOME=$HOME/android-sdk
-          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
-          yes | sdkmanager --licenses
-          sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
-
-      # 5️⃣ Clean previous Buildozer cache
+      # Step 3: Clean previous build cache
       - name: Clean Buildozer cache
         run: rm -rf ~/.buildozer
 
-      # 6️⃣ Build APK
-      - name: Build APK
+      # Step 4: Build debug APK
+      - name: Build Debug APK
         working-directory: DroneApp
-        run: |
-          export ANDROID_HOME=$HOME/android-sdk
-          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
-          buildozer -v android debug
+        run: buildozer -v android debug
 
-      # 7️⃣ Prepare APK artifact for download
+      # Step 5: Build release APK (signed)
+      - name: Build Release APK
+        working-directory: DroneApp
+        env:
+          ANDROID_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }} # Base64 encoded .keystore
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_ALIAS_PASSWORD: ${{ secrets.ANDROID_KEY_ALIAS_PASSWORD }}
+        run: |
+          # Decode keystore
+          echo $ANDROID_KEYSTORE | base64 --decode > my-release.keystore
+          # Update buildozer.spec for signing
+          sed -i "s|#android.release_keystore =|android.release_keystore = my-release.keystore|" buildozer.spec
+          sed -i "s|#android.keystore_password =|android.keystore_password = $ANDROID_KEYSTORE_PASSWORD|" buildozer.spec
+          sed -i "s|#android.keyalias_name =|android.keyalias_name = $ANDROID_KEY_ALIAS|" buildozer.spec
+          sed -i "s|#android.keyalias_password =|android.keyalias_password = $ANDROID_KEY_ALIAS_PASSWORD|" buildozer.spec
+          buildozer -v android release
+
+      # Step 6: Prepare APK artifact
       - name: Prepare APK artifact
         run: |
           mkdir -p artifacts
           zip -j artifacts/DroneApp-APKs.zip DroneApp/bin/*.apk
 
-      # 8️⃣ Upload APK artifact
-      - name: Upload APK artifact
+      # Step 7: Upload APK artifact
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: DroneApp-APK
