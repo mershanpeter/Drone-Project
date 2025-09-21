@@ -5,6 +5,7 @@ on:
     branches:
       - main
   pull_request:
+  workflow_dispatch:
 
 jobs:
   build:
@@ -12,10 +13,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v4
         with:
           python-version: "3.10"
 
@@ -35,14 +36,28 @@ jobs:
         run: rm -rf ~/.buildozer
 
       - name: Accept Android SDK licenses
-        run: yes | sdkmanager --licenses
+        run: yes | sdkmanager --licenses || true
 
       - name: Build APK
         working-directory: DroneApp
         run: buildozer -v android debug
 
-      - name: Upload APK artifact
+      - name: Prepare APK artifact (zip)
+        run: |
+          # create artifacts folder
+          mkdir -p artifacts
+          # if APK(s) exist, zip them; else output message (so step won't fail silently)
+          if ls DroneApp/bin/*.apk 1> /dev/null 2>&1; then
+            zip -j artifacts/DroneApp-APKs.zip DroneApp/bin/*.apk
+            echo "Zipped APK(s) to artifacts/DroneApp-APKs.zip"
+          else
+            echo "No APKs found in DroneApp/bin/"
+            ls -la DroneApp/bin || true
+            exit 1
+          fi
+
+      - name: Upload APK artifact (v4)
         uses: actions/upload-artifact@v4
         with:
           name: DroneApp-APK
-          path: DroneApp/bin/*.apk
+          path: artifacts/DroneApp-APKs.zip
