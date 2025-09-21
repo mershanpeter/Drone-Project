@@ -32,16 +32,18 @@ jobs:
           pip install --upgrade pip
           pip install "buildozer==1.5.0" "cython<3.0" "setuptools<70"
 
-      # 3. Ensure Java + Android SDK licenses are accepted
-      - name: Install Android commandline tools
+      # 3. Install Android SDK + Build-tools and accept licenses
+      - name: Install Android SDK + Build-tools
         run: |
           mkdir -p $HOME/android-sdk/cmdline-tools
           cd $HOME/android-sdk/cmdline-tools
           curl -fo tools.zip https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
-          unzip tools.zip -d latest
+          unzip -o tools.zip -d latest
           export ANDROID_HOME=$HOME/android-sdk
           export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
-          yes | sdkmanager --licenses || true
+          sdkmanager --update
+          yes | sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2" "build-tools;36.1.0" "cmdline-tools;latest"
+          yes | sdkmanager --licenses
 
       # 4. Clean previous Buildozer cache
       - name: Clean buildozer cache
