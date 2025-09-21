@@ -1,57 +1,48 @@
-[app]
-# (str) Title of your application
-title = DroneApp
+name: Build Android APK
 
-# (str) Package name
-package.name = droneapp
+on:
+  push:
+    branches:
+      - main
+  pull_request:
 
-# (str) Package domain (reverse domain notation)
-package.domain = org.mershan
+jobs:
+  build:
+    runs-on: ubuntu-latest
 
-# (str) Source code directory (relative to buildozer.spec)
-source.dir = .
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-# (str) Application version
-version = 1.0.0
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
 
-# (list) Requirements
-requirements = python3,kivy
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            zip unzip openjdk-17-jdk \
+            autoconf automake libtool \
+            pkg-config zlib1g-dev libncurses5-dev \
+            libffi-dev libssl-dev git
 
-# (str) Entry point of the app
-entrypoint = main.py
+      - name: Install buildozer
+        run: pip install buildozer cython
 
-# (str) Icon of the app
-icon.filename = %(source.dir)s/icon.png
+      - name: Clean buildozer cache
+        run: rm -rf ~/.buildozer
 
-# (bool) Copy the directory to the APK
-copy_mkdir = True
+      - name: Accept Android SDK licenses
+        run: yes | sdkmanager --licenses
 
-# (list) Include additional files
-source.include_exts = py,png,jpg,kv,txt
+      - name: Build APK
+        working-directory: DroneApp
+        run: buildozer -v android debug
 
-# (str) Orientation
-orientation = portrait
-
-# (bool) Presplash
-presplash.filename = %(source.dir)s/presplash.png
-
-# (str) Supported Android API level
-android.api = 33
-
-# (str) Minimum SDK version
-android.minapi = 21
-
-# (str) Android NDK version
-android.ndk = 25b
-
-# (bool) Android logcat
-android.logcat_filters = *:S python:D
-
-# (bool) Android permissions (if needed)
-android.permissions = INTERNET
-
-# (str) Android entry point
-android.entrypoint = org.kivy.android.PythonActivity
-
-# (bool) Android allow backup
-android.allow_backup = true
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: DroneApp-APK
+          path: DroneApp/bin/*.apk
