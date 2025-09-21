@@ -5,53 +5,79 @@ title = DroneApp
 # (str) Package name
 package.name = droneapp
 
-# (str) Package domain (reverse domain notation)
+# (str) Package domain (reverse DNS style)
 package.domain = org.mershan
 
-# (str) Source code directory (relative to buildozer.spec)
+# (str) Source code where the main.py file is located
 source.dir = .
 
-# (str) Application version
-version = 1.0.0
+# (str) Main entry point of the app
+source.main = main.py
 
-# (list) Requirements
+# (list) Application requirements
 requirements = python3,kivy
 
-# (str) Entry point of the app
-entrypoint = main.py
-
-# (str) Icon of the app
-icon.filename = %(source.dir)s/icon.png
-
-# (bool) Copy the directory to the APK
-copy_mkdir = True
-
-# (list) Include additional files
-source.include_exts = py,png,jpg,kv,txt
-
-# (str) Orientation
+# (str) Supported orientation
 orientation = portrait
 
-# (bool) Presplash
-presplash.filename = %(source.dir)s/presplash.png
+# (bool) Indicate if permissions are required
+android.permissions = INTERNET,ACCESS_WIFI_STATE
 
-# (str) Supported Android API level
-android.api = 33
+# (str) Icon of the app
+icon.filename = icon.png
 
-# (str) Minimum SDK version
+# (list) Presplash image
+presplash.filename = presplash.png
+
+# (str) Supported Android API
+android.sdk_api = 33
+
+# (str) Minimum Android API
 android.minapi = 21
 
-# (str) Android NDK version
-android.ndk = 25b
+# (str) Target Android API
+android.target = 33
 
-# (bool) Android logcat
-android.logcat_filters = *:S python:D
+# (str) Android SDK path
+android.sdk_path = /home/runner/work/Drone-Project/Drone-Project/DroneApp/android-sdk
 
-# (bool) Android permissions (if needed)
-android.permissions = INTERNET
+# (str) Android NDK path (leave blank to auto-download)
+android.ndk_path =
 
-# (str) Android entry point
-android.entrypoint = org.kivy.android.PythonActivity
+# (str) Build-tools version (stable for Buildozer)
+android.build_tools_version = 33.0.2
 
-# (bool) Android allow backup
-android.allow_backup = true
+# (str) Java version
+android.javac = 17
+
+# (str) Python version
+python3 = 3.10
+
+# (bool) Allow backup of APKs
+preserve_apk = False
+
+# (bool) Use SDL2 backend
+android.kivy_android = True
+
+# (bool) Copy needed dependencies automatically
+copy_mylibs = 1
+
+# (str) Package format
+android.arch = armeabi-v7a
+
+# (bool) Whether to include debug symbols
+android.debug = 1
+
+# (bool) Enable splash screen
+android.presplash_color = #FFFFFF
+
+# (str) Additional environment variables (for CI/CD)
+env =
+    ANDROID_HOME=/home/runner/work/Drone-Project/Drone-Project/DroneApp/android-sdk
+    PATH=/home/runner/work/Drone-Project/Drone-Project/DroneApp/android-sdk/cmdline-tools/latest/bin:/home/runner/work/Drone-Project/Drone-Project/DroneApp/android-sdk/platform-tools:$PATH
+
+# (bool) Log build output
+log_level = 2
+
+# (str) Target architecture for the APK
+android.archs = armeabi-v7a
