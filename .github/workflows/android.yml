@@ -44,12 +44,15 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             python3-pip python3-setuptools \
-            openjdk-17-jdk unzip zip wget
+            openjdk-17-jdk unzip zip wget git
 
-      - name: Install Buildozer
+      - name: Install Buildozer and Python-for-Android
         run: |
-          pip install --upgrade pip
-          pip install buildozer cython
+          python3 -m pip install --upgrade pip
+          pip install --upgrade buildozer cython
+
+      - name: Set PATH for Python
+        run: echo "$HOME/.local/bin:$PATH" >> $GITHUB_ENV
 
       - name: Install Android SDK Command-line Tools & Accept Licenses
         run: |
