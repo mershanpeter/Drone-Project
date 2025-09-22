@@ -29,7 +29,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pip-
 
-      - name: Cache Buildozer and Android SDK/NDK
+      - name: Cache Buildozer, SDK, NDK, recipes
         uses: actions/cache@v4
         with:
           path: |
@@ -46,14 +46,14 @@ jobs:
             python3-pip python3-setuptools \
             openjdk-17-jdk unzip zip wget git
 
-      - name: Install Buildozer and Python-for-Android
+      - name: Install Buildozer, Cython, Python-for-Android
         run: |
           python3 -m pip install --upgrade pip
           pip install --upgrade buildozer cython
+          pip install python-for-android==2025.9.1
 
       - name: Add Python local bin to PATH
-        run: |
-          echo "PATH=$HOME/.local/bin:$PATH" >> $GITHUB_ENV
+        run: echo "PATH=$HOME/.local/bin:$PATH" >> $GITHUB_ENV
 
       - name: Install Android SDK Command-line Tools & Accept Licenses
         run: |
@@ -74,8 +74,14 @@ jobs:
           mkdir -p "$ANDROID_SDK_ROOT/tools/bin"
           ln -s "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" "$ANDROID_SDK_ROOT/tools/bin/sdkmanager"
 
-      - name: Build APK with Buildozer
-        run: buildozer android debug
+      - name: Set Android NDK environment variable
+        run: |
+          export ANDROIDNDK="$HOME/.buildozer/android/platform/android-ndk-r25b"
+          echo "ANDROIDNDK=$ANDROIDNDK" >> $GITHUB_ENV
+
+      - name: Build APK with Buildozer (retry on failure)
+        run: |
+          buildozer android debug --verbose --retry 5
 
       - name: Rename APK with version
         run: |
