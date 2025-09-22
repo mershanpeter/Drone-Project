@@ -39,11 +39,17 @@ jobs:
         echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
         echo "PATH=$HOME/android-sdk/cmdline-tools/latest/bin:$HOME/android-sdk/platform-tools:$PATH" >> $GITHUB_ENV
 
-    # Step 4: Accept licenses + Install Build Tools
+    # ✅ Debug step: Verify sdkmanager installation
+    - name: Verify sdkmanager
+      run: |
+        ls -R $HOME/android-sdk/cmdline-tools/latest/bin
+        $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --version
+
+    # Step 4: Accept licenses + Install Build Tools (using absolute path)
     - name: Install SDK Packages
       run: |
-        sdkmanager --sdk_root=$HOME/android-sdk --licenses
-        sdkmanager --sdk_root=$HOME/android-sdk "platform-tools" "platforms;android-33" "build-tools;33.0.2"
+        $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --sdk_root=$HOME/android-sdk --licenses
+        $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --sdk_root=$HOME/android-sdk "platform-tools" "platforms;android-33" "build-tools;33.0.2"
 
     # Step 5: Clean previous Buildozer cache
     - name: Clean Buildozer cache
