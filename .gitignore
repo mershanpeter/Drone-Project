@@ -1,4 +1,23 @@
-.metadata/
-*.log
-*.dat
-*.xml
+# Buildozer / Python build files
+.buildozer/
+*.pyc
+__pycache__/
+
+# Android SDK / NDK / Ant local folders
+DroneApp/android-ndk-*/
+DroneApp/apache-ant-*/
+DroneApp/commandlinetools-*/
+
+# APK / output files
+DroneApp/bin/
+DroneApp/*.apk
+
+# IDE / OS files
+*.iml
+*.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+git add .gitignore
+git commit -m "Add .gitignore for SDK/NDK/Ant and build artifacts"
+git push origin main
