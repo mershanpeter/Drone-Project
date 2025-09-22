@@ -1,42 +1,55 @@
-name: Build APK
+name: Build Android APK
 
 on:
   push:
     branches:
       - main
+  pull_request:
 
 jobs:
-  build-android:
+  build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Install dependencies
-        run: |
-          sudo apt update
-          sudo apt install -y python3-pip openjdk-11-jdk wget unzip git zip
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
 
-      - name: Install Buildozer
+      - name: Install system dependencies
         run: |
-          python3 -m pip install --upgrade pip
-          pip install buildozer cython
+          sudo apt-get update
+          sudo apt-get install -y openjdk-17-jdk zip unzip zlib1g-dev wget curl git
 
-      - name: Setup Android SDK cmdline-tools
+      - name: Install Python dependencies
         run: |
-          mkdir -p $HOME/.buildozer/android/platform/android-sdk/cmdline-tools
-          cd $HOME/.buildozer/android/platform/android-sdk/cmdline-tools
-          wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O tools.zip
-          unzip -q tools.zip
-          rm tools.zip
-          mv cmdline-tools latest
-          ls $HOME/.buildozer/android/platform/android-sdk/cmdline-tools/latest/bin/
+          python -m pip install --upgrade pip
+          pip install buildozer cython kivy
 
-      - name: Accept Android SDK licenses
+      - name: Clear previous Buildozer cache
         run: |
-          yes | $HOME/.buildozer/android/platform/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses
+          rm -rf ~/.buildozer/android/platform/android-ndk-r25b
+          rm -rf ~/.buildozer/android/platform/android-sdk
+          buildozer android clean
+
+      - name: Set environment variables
+        run: |
+          export ANDROIDNDK=$HOME/.buildozer/android/platform/android-ndk-r25b
+          export ANDROIDSDK=$HOME/.buildozer/android/platform/android-sdk
+          export PATH=$ANDROIDSDK/cmdline-tools/latest/bin:$PATH
+          echo "ANDROIDNDK=$ANDROIDNDK" >> $GITHUB_ENV
+          echo "ANDROIDSDK=$ANDROIDSDK" >> $GITHUB_ENV
+          echo "PATH=$PATH" >> $GITHUB_ENV
 
       - name: Build APK
         run: |
           buildozer android debug
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: DroneApp-APK
+          path: bin/*.apk
