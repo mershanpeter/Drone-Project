@@ -5,6 +5,8 @@ on:
     branches:
       - main
   pull_request:
+    branches:
+      - main
 
 jobs:
   build:
@@ -19,61 +21,79 @@ jobs:
         with:
           python-version: "3.10"
 
+      - name: Cache Python packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Cache Buildozer and Android SDK/NDK
+        uses: actions/cache@v4
+        with:
+          path: |
+            .buildozer
+            ~/.buildozer
+          key: ${{ runner.os }}-buildozer-${{ hashFiles('buildozer.spec') }}
+          restore-keys: |
+            ${{ runner.os }}-buildozer-
+
       - name: Install system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            build-essential \
-            git \
-            zip \
-            unzip \
-            openjdk-17-jdk \
-            python3-pip \
-            python3-setuptools \
-            python3-wheel \
-            libffi-dev \
-            libssl-dev \
-            libgl1-mesa-dev \
-            libgles2-mesa-dev \
-            libxi-dev \
-            libx11-dev \
-            libxrandr-dev \
-            libxinerama-dev \
-            libxcursor-dev \
-            libsdl2-dev \
-            libsdl2-image-dev \
-            libsdl2-mixer-dev \
-            libsdl2-ttf-dev \
-            libportmidi-dev \
-            libswscale-dev \
-            libavformat-dev \
-            libavcodec-dev \
-            libjpeg-dev \
-            libfreetype6-dev \
-            libpng-dev \
-            pkg-config \
-            libblas-dev \
-            liblapack-dev \
-            gfortran
+            python3-pip python3-setuptools \
+            openjdk-17-jdk unzip zip wget
 
-      - name: Install pip dependencies
+      - name: Install Buildozer
         run: |
-          python3 -m pip install --upgrade pip
-          pip install cython buildozer
-          pip install requests numpy opencv-python
+          pip install --upgrade pip
+          pip install buildozer cython
 
-      - name: Build with Buildozer
+      - name: Install Android SDK Command-line Tools & Accept Licenses
         run: |
-          buildozer android debug
+          ANDROID_SDK_ROOT="$HOME/.buildozer/android/platform/android-sdk"
+          mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools"
+          cd "$ANDROID_SDK_ROOT/cmdline-tools"
+          wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
+          unzip -q cmdline-tools.zip
+          mv cmdline-tools latest
+          rm cmdline-tools.zip
+          export PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH
+          yes | sdkmanager --sdk_root="$ANDROID_SDK_ROOT" --licenses
+          sdkmanager --sdk_root="$ANDROID_SDK_ROOT" "platform-tools" "platforms;android-33" "build-tools;36.1.0"
+
+      - name: Build APK with Buildozer
+        run: buildozer android debug
 
       - name: Rename APK with version
         run: |
           APP_NAME="DroneApp"
           VERSION=$(grep "version =" buildozer.spec | cut -d'=' -f2 | xargs)
           mv bin/*.apk "bin/${APP_NAME}-v${VERSION}-debug.apk"
+          echo "APK_NAME=${APP_NAME}-v${VERSION}-debug.apk" >> $GITHUB_ENV
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
 
-      - name: Upload APK artifact
+      - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: DroneApp-APK
           path: bin/*.apk
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ env.VERSION }}
+          name: DroneApp v${{ env.VERSION }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload APK to Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: bin/${{ env.APK_NAME }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
