@@ -26,25 +26,20 @@ jobs:
         pip install --upgrade pip
         pip install "buildozer==1.5.0" "cython<3.0" "setuptools<70"
 
-    # Step 3: Clean previous Buildozer cache
-    - name: Clean Buildozer cache
-      run: rm -rf ~/.buildozer
-
-    # Step 4: Cache Android SDK/NDK/Ant
-    - name: Cache Android SDK, NDK, Ant
+    # Step 3: Cache entire Buildozer folder for incremental builds
+    - name: Cache Buildozer folder
       uses: actions/cache@v3
       with:
-        path: |
-          $HOME/.buildozer/android/platform/android-sdk
-        key: android-sdk-cache-v1
+        path: $HOME/.buildozer
+        key: buildozer-cache-v1
 
-    # Step 5: Setup Android SDK, NDK, Ant, Build-tools
-    - name: Install Android SDK/NDK/Ant + Build-tools
+    # Step 4: Setup Android SDK/NDK/Ant + Build-tools if missing
+    - name: Setup Android SDK + Build-tools
       run: |
         export ANDROID_HOME=$HOME/.buildozer/android/platform/android-sdk
         mkdir -p $ANDROID_HOME/cmdline-tools
 
-        # Only download if cmdline-tools folder is missing
+        # --- Download cmdline-tools if missing ---
         if [ ! -d "$ANDROID_HOME/cmdline-tools/latest" ]; then
           cd $ANDROID_HOME/cmdline-tools
           wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O tools.zip
@@ -52,7 +47,19 @@ jobs:
           rm tools.zip
         fi
 
-        # Download NDK if missing
+        # Export PATH including cmdline-tools/bin
+        export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
+
+        # Verify sdkmanager exists
+        ls -l $ANDROID_HOME/cmdline-tools/latest/bin/
+
+        # Accept licenses
+        yes | sdkmanager --sdk_root=$ANDROID_HOME --licenses
+
+        # Install platform-tools, build-tools, platforms
+        sdkmanager --sdk_root=$ANDROID_HOME "platform-tools" "platforms;android-33" "build-tools;33.0.2"
+
+        # --- Install NDK if missing ---
         if [ ! -d "$ANDROID_HOME/ndk/25.1.8937393" ]; then
           cd $ANDROID_HOME
           wget https://dl.google.com/android/repository/android-ndk-r25b-linux.zip -O ndk.zip
@@ -62,7 +69,7 @@ jobs:
           mv android-ndk-r25b ndk/25.1.8937393
         fi
 
-        # Download Ant if missing
+        # --- Install Ant if missing ---
         if [ ! -d "$ANDROID_HOME/ant/apache-ant-1.9.4" ]; then
           cd $ANDROID_HOME
           wget https://archive.apache.org/dist/ant/binaries/apache-ant-1.9.4-bin.zip -O ant.zip
@@ -72,24 +79,20 @@ jobs:
           mv apache-ant-1.9.4 ant/apache-ant-1.9.4
         fi
 
-        # Export PATH
-        export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/ant/apache-ant-1.9.4/bin:$PATH
+        # Export NDK and Ant paths
         export ANDROIDNDK=$ANDROID_HOME/ndk/25.1.8937393
         export ANT_HOME=$ANDROID_HOME/ant/apache-ant-1.9.4
+        export PATH=$ANT_HOME/bin:$PATH
 
-        # Accept licenses & install platform-tools/build-tools
-        yes | sdkmanager --sdk_root=$ANDROID_HOME --licenses
-        sdkmanager --sdk_root=$ANDROID_HOME "platform-tools" "platforms;android-33" "build-tools;33.0.2"
+        # Verify aidl exists
+        ls -l $ANDROID_HOME/build-tools/33.0.2/aidl
 
-        # Verify aidl
-        ls $ANDROID_HOME/build-tools/33.0.2/aidl
-
-    # Step 6: Build debug APK
+    # Step 5: Build debug APK
     - name: Build APK
       working-directory: DroneApp
       run: buildozer -v android debug
 
-    # Step 7: Upload APK artifact
+    # Step 6: Upload APK artifact
     - name: Upload APK artifact
       uses: actions/upload-artifact@v4
       with:
