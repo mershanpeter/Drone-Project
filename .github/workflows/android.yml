@@ -26,28 +26,35 @@ jobs:
         pip install --upgrade pip
         pip install "buildozer==1.5.0" "cython<3.0" "setuptools<70"
 
-    # Step 3: Install Android SDK command-line tools + Build-Tools
+    # Step 3: Install Android SDK command-line tools
     - name: Setup Android SDK
       run: |
         mkdir -p $HOME/android-sdk/cmdline-tools
         cd $HOME/android-sdk/cmdline-tools
-        wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O tools.zip
+        wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O tools.zip
         unzip -q tools.zip -d latest
-        export ANDROID_HOME=$HOME/android-sdk
-        export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
-        yes | sdkmanager --licenses
-        sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
+        rm tools.zip
 
-    # Step 4: Clean previous Buildozer cache
+        # Persist environment variables
+        echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
+        echo "PATH=$HOME/android-sdk/cmdline-tools/latest/bin:$HOME/android-sdk/platform-tools:$PATH" >> $GITHUB_ENV
+
+    # Step 4: Accept licenses + Install Build Tools
+    - name: Install SDK Packages
+      run: |
+        sdkmanager --sdk_root=$HOME/android-sdk --licenses
+        sdkmanager --sdk_root=$HOME/android-sdk "platform-tools" "platforms;android-33" "build-tools;33.0.2"
+
+    # Step 5: Clean previous Buildozer cache
     - name: Clean Buildozer cache
       run: rm -rf ~/.buildozer
 
-    # Step 5: Build debug APK
+    # Step 6: Build debug APK
     - name: Build APK
       working-directory: DroneApp
       run: buildozer -v android debug
 
-    # Step 6: Upload APK artifact
+    # Step 7: Upload APK artifact
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
