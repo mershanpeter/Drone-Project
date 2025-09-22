@@ -32,35 +32,39 @@ jobs:
         mkdir -p $HOME/android-sdk/cmdline-tools
         cd $HOME/android-sdk/cmdline-tools
         wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O tools.zip
-        unzip -q tools.zip -d latest
+        unzip -q tools.zip -d temp
         rm tools.zip
+
+        # Move extracted folder into "latest"
+        mv temp/cmdline-tools latest
+        rm -rf temp
 
         # Persist environment variables
         echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
         echo "PATH=$HOME/android-sdk/cmdline-tools/latest/bin:$HOME/android-sdk/platform-tools:$PATH" >> $GITHUB_ENV
 
-    # ✅ Debug step: Verify sdkmanager installation
+    # Step 4: Debug - Verify sdkmanager exists and works
     - name: Verify sdkmanager
       run: |
         ls -R $HOME/android-sdk/cmdline-tools/latest/bin
         $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --version
 
-    # Step 4: Accept licenses + Install Build Tools (using absolute path)
+    # Step 5: Accept licenses + Install Build Tools
     - name: Install SDK Packages
       run: |
         $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --sdk_root=$HOME/android-sdk --licenses
         $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --sdk_root=$HOME/android-sdk "platform-tools" "platforms;android-33" "build-tools;33.0.2"
 
-    # Step 5: Clean previous Buildozer cache
+    # Step 6: Clean previous Buildozer cache
     - name: Clean Buildozer cache
       run: rm -rf ~/.buildozer
 
-    # Step 6: Build debug APK
+    # Step 7: Build debug APK
     - name: Build APK
       working-directory: DroneApp
       run: buildozer -v android debug
 
-    # Step 7: Upload APK artifact
+    # Step 8: Upload APK artifact
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
