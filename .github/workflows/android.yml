@@ -51,8 +51,9 @@ jobs:
           python3 -m pip install --upgrade pip
           pip install --upgrade buildozer cython
 
-      - name: Set PATH for Python
-        run: echo "$HOME/.local/bin:$PATH" >> $GITHUB_ENV
+      - name: Add Python local bin to PATH
+        run: |
+          echo "PATH=$HOME/.local/bin:$PATH" >> $GITHUB_ENV
 
       - name: Install Android SDK Command-line Tools & Accept Licenses
         run: |
