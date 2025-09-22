@@ -26,46 +26,71 @@ jobs:
         pip install --upgrade pip
         pip install "buildozer==1.5.0" "cython<3.0" "setuptools<70"
 
-    # Step 3: Install Android SDK command-line tools
-    - name: Setup Android SDK
-      run: |
-        mkdir -p $HOME/android-sdk/cmdline-tools
-        cd $HOME/android-sdk/cmdline-tools
-        wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O tools.zip
-        unzip -q tools.zip -d temp
-        rm tools.zip
-
-        # Move extracted folder into "latest"
-        mv temp/cmdline-tools latest
-        rm -rf temp
-
-        # Persist environment variables
-        echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
-        echo "PATH=$HOME/android-sdk/cmdline-tools/latest/bin:$HOME/android-sdk/platform-tools:$PATH" >> $GITHUB_ENV
-
-    # Step 4: Debug - Verify sdkmanager exists and works
-    - name: Verify sdkmanager
-      run: |
-        ls -R $HOME/android-sdk/cmdline-tools/latest/bin
-        $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --version
-
-    # Step 5: Accept licenses + Install Build Tools
-    - name: Install SDK Packages
-      run: |
-        $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --sdk_root=$HOME/android-sdk --licenses
-        $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --sdk_root=$HOME/android-sdk "platform-tools" "platforms;android-33" "build-tools;33.0.2"
-
-    # Step 6: Clean previous Buildozer cache
+    # Step 3: Clean previous Buildozer cache
     - name: Clean Buildozer cache
       run: rm -rf ~/.buildozer
 
-    # Step 7: Build debug APK
+    # Step 4: Cache Android SDK/NDK/Ant
+    - name: Cache Android SDK, NDK, Ant
+      uses: actions/cache@v3
+      with:
+        path: |
+          $HOME/.buildozer/android/platform/android-sdk
+        key: android-sdk-cache-v1
+
+    # Step 5: Setup Android SDK, NDK, Ant, Build-tools
+    - name: Install Android SDK/NDK/Ant + Build-tools
+      run: |
+        export ANDROID_HOME=$HOME/.buildozer/android/platform/android-sdk
+        mkdir -p $ANDROID_HOME/cmdline-tools
+
+        # Only download if cmdline-tools folder is missing
+        if [ ! -d "$ANDROID_HOME/cmdline-tools/latest" ]; then
+          cd $ANDROID_HOME/cmdline-tools
+          wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O tools.zip
+          unzip -q tools.zip -d latest
+          rm tools.zip
+        fi
+
+        # Download NDK if missing
+        if [ ! -d "$ANDROID_HOME/ndk/25.1.8937393" ]; then
+          cd $ANDROID_HOME
+          wget https://dl.google.com/android/repository/android-ndk-r25b-linux.zip -O ndk.zip
+          unzip -q ndk.zip
+          rm ndk.zip
+          mkdir -p ndk
+          mv android-ndk-r25b ndk/25.1.8937393
+        fi
+
+        # Download Ant if missing
+        if [ ! -d "$ANDROID_HOME/ant/apache-ant-1.9.4" ]; then
+          cd $ANDROID_HOME
+          wget https://archive.apache.org/dist/ant/binaries/apache-ant-1.9.4-bin.zip -O ant.zip
+          unzip -q ant.zip
+          rm ant.zip
+          mkdir -p ant
+          mv apache-ant-1.9.4 ant/apache-ant-1.9.4
+        fi
+
+        # Export PATH
+        export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/ant/apache-ant-1.9.4/bin:$PATH
+        export ANDROIDNDK=$ANDROID_HOME/ndk/25.1.8937393
+        export ANT_HOME=$ANDROID_HOME/ant/apache-ant-1.9.4
+
+        # Accept licenses & install platform-tools/build-tools
+        yes | sdkmanager --sdk_root=$ANDROID_HOME --licenses
+        sdkmanager --sdk_root=$ANDROID_HOME "platform-tools" "platforms;android-33" "build-tools;33.0.2"
+
+        # Verify aidl
+        ls $ANDROID_HOME/build-tools/33.0.2/aidl
+
+    # Step 6: Build debug APK
     - name: Build APK
       working-directory: DroneApp
       run: buildozer -v android debug
 
-    # Step 8: Upload APK artifact
-    - name: Upload APK
+    # Step 7: Upload APK artifact
+    - name: Upload APK artifact
       uses: actions/upload-artifact@v4
       with:
         name: DroneApp-APK
