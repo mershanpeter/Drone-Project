@@ -12,50 +12,68 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.10"
 
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y openjdk-17-jdk zip unzip zlib1g-dev wget curl git
+          sudo apt-get install -y \
+            build-essential \
+            git \
+            zip \
+            unzip \
+            openjdk-17-jdk \
+            python3-pip \
+            python3-setuptools \
+            python3-wheel \
+            libffi-dev \
+            libssl-dev \
+            libgl1-mesa-dev \
+            libgles2-mesa-dev \
+            libxi-dev \
+            libx11-dev \
+            libxrandr-dev \
+            libxinerama-dev \
+            libxcursor-dev \
+            libsdl2-dev \
+            libsdl2-image-dev \
+            libsdl2-mixer-dev \
+            libsdl2-ttf-dev \
+            libportmidi-dev \
+            libswscale-dev \
+            libavformat-dev \
+            libavcodec-dev \
+            libjpeg-dev \
+            libfreetype6-dev \
+            libpng-dev \
+            pkg-config \
+            libblas-dev \
+            liblapack-dev \
+            gfortran
 
-      - name: Install Python dependencies
+      - name: Install pip dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install buildozer cython kivy
+          python3 -m pip install --upgrade pip
+          pip install cython buildozer
+          pip install requests numpy opencv-python
 
-      - name: Clear previous Buildozer cache
-        run: |
-          rm -rf ~/.buildozer/android/platform/android-ndk-r25b
-          rm -rf ~/.buildozer/android/platform/android-sdk
-          buildozer android clean
-
-      - name: Download Android SDK cmdline-tools
-        run: |
-          ANDROIDSDK=$HOME/.buildozer/android/platform/android-sdk
-          mkdir -p $ANDROIDSDK/cmdline-tools
-          cd $ANDROIDSDK/cmdline-tools
-          wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
-          unzip cmdline-tools.zip
-          mv cmdline-tools latest
-
-      - name: Set environment variables
-        run: |
-          echo "ANDROIDSDK=$HOME/.buildozer/android/platform/android-sdk" >> $GITHUB_ENV
-          echo "ANDROIDNDK=$HOME/.buildozer/android/platform/android-ndk-r25b" >> $GITHUB_ENV
-          echo "$HOME/.buildozer/android/platform/android-sdk/cmdline-tools/latest/bin:$PATH" >> $GITHUB_ENV
-
-      - name: Build APK
+      - name: Build with Buildozer
         run: |
           buildozer android debug
 
+      - name: Rename APK with version
+        run: |
+          APP_NAME="DroneApp"
+          VERSION=$(grep "version =" buildozer.spec | cut -d'=' -f2 | xargs)
+          mv bin/*.apk "bin/${APP_NAME}-v${VERSION}-debug.apk"
+
       - name: Upload APK artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: DroneApp-APK
           path: bin/*.apk
