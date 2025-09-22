@@ -16,10 +16,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
+          python-version: "3.11"
 
       - name: Cache Python packages
         uses: actions/cache@v4
@@ -45,15 +45,23 @@ jobs:
           sudo apt-get install -y \
             python3-pip python3-setuptools python3-dev \
             build-essential autoconf automake libtool pkg-config \
-            libffi-dev libssl-dev unzip zip wget git openjdk-17-jdk
+            libffi-dev libssl-dev unzip zip wget git \
+            libncurses5-dev libncursesw5-dev libsqlite3-dev \
+            libbz2-dev libreadline-dev liblzma-dev zlib1g-dev \
+            libgdbm-dev libnss3-dev libpng-dev libjpeg-dev \
+            xz-utils libgl1-mesa-dev libgles2-mesa-dev \
+            libglfw3 libglfw3-dev libgl1-mesa-glx \
+            libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev \
+            libsdl2-ttf-dev
 
-      - name: Install Buildozer and Cython
+      - name: Install Buildozer and Python-for-Android
         run: |
           python3 -m pip install --upgrade pip
-          pip install --upgrade buildozer cython
+          pip install --upgrade buildozer cython python-for-android
 
       - name: Add Python local bin to PATH
-        run: echo "PATH=$HOME/.local/bin:$PATH" >> $GITHUB_ENV
+        run: |
+          echo "PATH=$HOME/.local/bin:$PATH" >> $GITHUB_ENV
 
       - name: Install Android SDK Command-line Tools & Accept Licenses
         run: |
@@ -66,11 +74,7 @@ jobs:
           rm cmdline-tools.zip
           export PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH
           yes | sdkmanager --sdk_root="$ANDROID_SDK_ROOT" --licenses
-          sdkmanager --sdk_root="$ANDROID_SDK_ROOT" \
-            "platform-tools" \
-            "platforms;android-33" \
-            "build-tools;36.1.0" \
-            "ndk;25.2.9519653"
+          sdkmanager --sdk_root="$ANDROID_SDK_ROOT" "platform-tools" "platforms;android-33" "build-tools;36.1.0"
 
       - name: Fix sdkmanager path for Buildozer
         run: |
@@ -78,14 +82,19 @@ jobs:
           mkdir -p "$ANDROID_SDK_ROOT/tools/bin"
           ln -s "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" "$ANDROID_SDK_ROOT/tools/bin/sdkmanager"
 
-      - name: Build APK with Buildozer
-        run: buildozer android debug
+      - name: Build APK with Buildozer (SDL2 bootstrap)
+        run: |
+          buildozer android debug \
+            --arch=arm64-v8a \
+            --arch=armeabi-v7a \
+            --storage-dir=$HOME/.buildozer \
+            --ignore-setup-py \
+            --verbose
 
       - name: Rename APK with version
         run: |
           APP_NAME="DroneApp"
           VERSION=$(grep "version =" buildozer.spec | cut -d'=' -f2 | xargs)
-          mkdir -p bin
           mv bin/*.apk "bin/${APP_NAME}-v${VERSION}-debug.apk"
           echo "APK_NAME=${APP_NAME}-v${VERSION}-debug.apk" >> $GITHUB_ENV
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
@@ -97,7 +106,6 @@ jobs:
           path: bin/*.apk
 
       - name: Create GitHub Release
-        id: create_release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ env.VERSION }}
