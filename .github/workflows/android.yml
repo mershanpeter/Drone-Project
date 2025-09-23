@@ -10,7 +10,10 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        arch: [armeabi-v7a, arm64-v8a]   # Build for both architectures
 
     steps:
       - name: Checkout repository
@@ -21,95 +24,72 @@ jobs:
         with:
           python-version: "3.10"
 
-      - name: Cache Python packages
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
-
-      - name: Cache Buildozer and Android SDK/NDK
-        uses: actions/cache@v4
-        with:
-          path: |
-            .buildozer
-            ~/.buildozer
-          key: ${{ runner.os }}-buildozer-${{ hashFiles('buildozer.spec') }}
-          restore-keys: |
-            ${{ runner.os }}-buildozer-
-
       - name: Install system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            python3-pip python3-setuptools python3-dev \
-            build-essential autoconf automake libtool pkg-config \
-            libffi-dev libssl-dev unzip zip wget git openjdk-17-jdk
+            python3-pip python3-setuptools \
+            autoconf automake libtool \
+            openjdk-17-jdk unzip zip wget git pkg-config build-essential
 
-      - name: Install Buildozer and Cython
+      - name: Install Buildozer and Python-for-Android
         run: |
-          python3 -m pip install --upgrade pip
-          pip install --upgrade buildozer cython
+          python3 -m pip install --upgrade pip setuptools wheel Cython
+          pip install buildozer==1.5.0 python-for-android==2024.6.4
 
-      - name: Add Python local bin to PATH
-        run: echo "PATH=$HOME/.local/bin:$PATH" >> $GITHUB_ENV
-
-      - name: Install Android SDK Command-line Tools & Accept Licenses
+      - name: Install Android SDK & Accept Licenses
         run: |
-          ANDROID_SDK_ROOT="$HOME/.buildozer/android/platform/android-sdk"
-          mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools"
-          cd "$ANDROID_SDK_ROOT/cmdline-tools"
+          export ANDROID_SDK_ROOT=$HOME/.buildozer/android/platform/android-sdk
+          mkdir -p $ANDROID_SDK_ROOT
+          cd $ANDROID_SDK_ROOT
           wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
-          unzip -q cmdline-tools.zip
-          mv cmdline-tools latest
+          mkdir -p cmdline-tools
+          unzip -q cmdline-tools.zip -d cmdline-tools
           rm cmdline-tools.zip
-          export PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH
-          yes | sdkmanager --sdk_root="$ANDROID_SDK_ROOT" --licenses
-          sdkmanager --sdk_root="$ANDROID_SDK_ROOT" \
-            "platform-tools" \
-            "platforms;android-33" \
-            "build-tools;36.1.0" \
-            "ndk;25.2.9519653"
+          export PATH=$ANDROID_SDK_ROOT/cmdline-tools/bin:$PATH
+          yes | $ANDROID_SDK_ROOT/cmdline-tools/bin/sdkmanager --sdk_root=$ANDROID_SDK_ROOT --licenses
+          $ANDROID_SDK_ROOT/cmdline-tools/bin/sdkmanager --sdk_root=$ANDROID_SDK_ROOT \
+            "platform-tools" "platforms;android-33" "build-tools;34.0.0"
 
-      - name: Fix sdkmanager path for Buildozer
+      - name: Clean previous builds
         run: |
-          ANDROID_SDK_ROOT="$HOME/.buildozer/android/platform/android-sdk"
-          mkdir -p "$ANDROID_SDK_ROOT/tools/bin"
-          ln -s "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" "$ANDROID_SDK_ROOT/tools/bin/sdkmanager"
+          rm -rf .buildozer bin
 
-      - name: Build APK with Buildozer
-        run: buildozer android debug
+      - name: Build APK
+        run: |
+          buildozer android debug --arch=${{ matrix.arch }} --verbose
 
       - name: Rename APK with version
         run: |
           APP_NAME="DroneApp"
           VERSION=$(grep "version =" buildozer.spec | cut -d'=' -f2 | xargs)
-          mkdir -p bin
-          mv bin/*.apk "bin/${APP_NAME}-v${VERSION}-debug.apk"
-          echo "APK_NAME=${APP_NAME}-v${VERSION}-debug.apk" >> $GITHUB_ENV
+          NEW_NAME="${APP_NAME}-v${VERSION}-${{ matrix.arch }}-debug.apk"
+          mv bin/*.apk "bin/${NEW_NAME}"
+          echo "APK_NAME=${NEW_NAME}" >> $GITHUB_ENV
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: DroneApp-APK
+          name: DroneApp-${{ matrix.arch }}
           path: bin/*.apk
 
+  release:
+    runs-on: ubuntu-22.04
+    needs: build
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./release_apks
+
       - name: Create GitHub Release
-        id: create_release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: v${{ env.VERSION }}
-          name: DroneApp v${{ env.VERSION }}
+          tag_name: v${{ needs.build.outputs.VERSION || 'latest' }}
+          name: DroneApp Release
           draft: false
           prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload APK to Release
-        uses: softprops/action-gh-release@v1
-        with:
-          files: bin/${{ env.APK_NAME }}
+          files: ./release_apks/**/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
