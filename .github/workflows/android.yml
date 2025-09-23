@@ -4,92 +4,40 @@ on:
   push:
     branches:
       - main
-  pull_request:
-    branches:
-      - main
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
-    strategy:
-      matrix:
-        arch: [armeabi-v7a, arm64-v8a]   # Build for both architectures
+    runs-on: ubuntu-24.04
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Setup Python
+        uses: actions/setup-python@v4
         with:
-          python-version: "3.10"
+          python-version: '3.10'
 
-      - name: Install system dependencies
+      - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y \
-            python3-pip python3-setuptools \
-            autoconf automake libtool \
-            openjdk-17-jdk unzip zip wget git pkg-config build-essential
+          sudo apt-get install -y git zip unzip openjdk-17-jdk autoconf \
+            libtool pkg-config zlib1g-dev libncurses5-dev libffi-dev \
+            libssl-dev
+          pip install --upgrade pip setuptools wheel Cython
+          pip install buildozer==1.5.0 python-for-android==2024.1.21
 
-      - name: Install Buildozer and Python-for-Android
+      - name: Clean build cache
         run: |
-          python3 -m pip install --upgrade pip setuptools wheel Cython
-          pip install buildozer==1.5.0 python-for-android==2024.6.4
-
-      - name: Install Android SDK & Accept Licenses
-        run: |
-          export ANDROID_SDK_ROOT=$HOME/.buildozer/android/platform/android-sdk
-          mkdir -p $ANDROID_SDK_ROOT
-          cd $ANDROID_SDK_ROOT
-          wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
-          mkdir -p cmdline-tools
-          unzip -q cmdline-tools.zip -d cmdline-tools
-          rm cmdline-tools.zip
-          export PATH=$ANDROID_SDK_ROOT/cmdline-tools/bin:$PATH
-          yes | $ANDROID_SDK_ROOT/cmdline-tools/bin/sdkmanager --sdk_root=$ANDROID_SDK_ROOT --licenses
-          $ANDROID_SDK_ROOT/cmdline-tools/bin/sdkmanager --sdk_root=$ANDROID_SDK_ROOT \
-            "platform-tools" "platforms;android-33" "build-tools;34.0.0"
-
-      - name: Clean previous builds
-        run: |
-          rm -rf .buildozer bin
+          rm -rf .buildozer
+          rm -rf bin
 
       - name: Build APK
         run: |
-          buildozer android debug --arch=${{ matrix.arch }} --verbose
+          buildozer android debug --verbose
 
-      - name: Rename APK with version
-        run: |
-          APP_NAME="DroneApp"
-          VERSION=$(grep "version =" buildozer.spec | cut -d'=' -f2 | xargs)
-          NEW_NAME="${APP_NAME}-v${VERSION}-${{ matrix.arch }}-debug.apk"
-          mv bin/*.apk "bin/${NEW_NAME}"
-          echo "APK_NAME=${NEW_NAME}" >> $GITHUB_ENV
-          echo "VERSION=${VERSION}" >> $GITHUB_ENV
-
-      - name: Upload APK Artifact
-        uses: actions/upload-artifact@v4
+      - name: Upload APK
+        uses: actions/upload-artifact@v3
         with:
-          name: DroneApp-${{ matrix.arch }}
+          name: DroneApp-APK
           path: bin/*.apk
-
-  release:
-    runs-on: ubuntu-22.04
-    needs: build
-    steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: ./release_apks
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: v${{ needs.build.outputs.VERSION || 'latest' }}
-          name: DroneApp Release
-          draft: false
-          prerelease: false
-          files: ./release_apks/**/*
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
